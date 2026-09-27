@@ -39,6 +39,26 @@ Plan-level refinements of the spec (Task 8 records them in the spec):
 4. Hand-editing an output that no later phase consumes (e.g. `02-ledger.md`) must still mark that phase STALE — test in Task 5.
 5. Re-running `init` for an existing `stable_id` must fail without touching `pipeline.json` — test in Task 5.
 
+## Execution Policy — minimal context (binding for subagent-driven execution)
+
+Goal: maximum quality at minimum token and context cost. **Minimal sufficient context, not minimal correctness:** never drop an acceptance criterion or a test to save tokens.
+
+**Orchestrator.** The controller session is the only holder of the full plan, spec and cross-task context. For each Task 1–12 it builds a *minimal task packet* containing only: task number and objective; the files the task may read/modify; the upstream interfaces it needs (as contracts, not history); acceptance criteria; exact test/eval commands; the minimal contract/spec excerpts required; task-specific constraints. Nothing deducible from the target files is repeated. Workers and reviewers never receive the whole plan, spec, CONTRACT or a repository overview.
+
+**Worker rules.** A worker:
+- executes only its task; touches no file outside its scope; never redesigns the architecture;
+- does not explore the repository generically, read the full plan, hunt for "other improvements", read unneeded documentation, or do web research unless the task explicitly requires it;
+- treats earlier tasks' outputs as contracts and does not reconstruct their history or repeat the orchestrator's analysis;
+- if an essential input is missing, reports exactly which contract/input is missing instead of reading files indiscriminately;
+- ends with only: `files changed`, `tests`, `result`, `blockers` — a few lines.
+
+**Reviewer rules.** A separate reviewer runs after every worker and receives only: the task packet, the acceptance criteria, the task diff, the test output, and any file excerpt strictly needed to verify the diff. Never the worker transcript, the worker's reasoning, the full plan or uninvolved docs. It checks only: (1) conformance to the task, (2) regressions introduced, (3) tests, (4) deviations from the contract. Output: `APPROVED`, or `CHANGES_REQUIRED` with concrete, verifiable findings only. On `APPROVED` the worker/reviewer contexts are discarded and the next task starts with a fresh subagent.
+
+**Eval efficiency (Tasks 9–10, `writing-skills` TDD kept).**
+- RED: 1 run per case.
+- GREEN: 3 runs, only after the skill is implemented.
+- REFACTOR: rerun only the cases that failed or behaved unstably; never the whole eval suite for a single-case change (except the final gate).
+
 ## File Structure
 
 ```
@@ -3063,6 +3083,54 @@ def test_contract_states_the_non_negotiables():
 def test_knowledge_files_exist():
     for name in ("voice", "editorial-policy", "source-policy"):
         assert (PLUGIN / "knowledge" / f"{name}.md").read_text(encoding="utf-8").strip()
+
+
+def voice() -> str:
+    return (PLUGIN / "knowledge" / "voice.md").read_text(encoding="utf-8")
+
+
+def test_voice_is_owner_version_with_all_sections():
+    text = voice()
+    assert text.startswith("# Voice — v1.0\n")
+    for section in (
+        "Identity", "Audience", "Perspective", "Core narrative", "Tone", "Anti-hype",
+        "Openings", "Technical depth", "Evidence", "Decisions and trade-offs",
+        "Failure and iteration", "Structure", "Limits", "Closing", "Italian", "English",
+        "Density and rhythm", "Article length", "Formatting", "Final voice test",
+    ):
+        assert f"\n## {section}\n" in text, section
+
+
+def test_voice_enforces_core_properties():
+    text = voice()
+    for fragment in (
+        # no hype (IT and EN lists)
+        "- rivoluzionario", "- game changer", "- semplicissimo", "- seamless", "- blazing fast",
+        "- production-ready",
+        # evidence over adjectives
+        "Prefer evidence over adjectives.",
+        # decisions and trade-offs
+        "what alternative was plausible;",
+        # failures and limits
+        "Do not hide failed attempts",
+        "must make relevant limitations visible.",
+        # no generic introduction
+        "Never open with generic scene-setting.",
+        "In questo articolo vedremo",
+        # architecture over line-by-line code
+        "over walking through code line by line.",
+        # recruiter readability
+        "a recruiter with technical literacy;",
+        # English adaptation
+        "It is not a sentence-by-sentence translation of Italian.",
+        # no filler for word count
+        "Never add filler to reach a minimum.",
+    ):
+        assert fragment in text, fragment
+    for row in ("| TECHNICAL | 900–1800 words |", "| RESEARCH | 1200–2200 words |",
+                "| OPINION | 600–1200 words |"):
+        assert row in text
+    assert "8. Does the English version sound written in English" in text
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -3231,38 +3299,401 @@ Next: <review and publish IT+EN in Wagtail admin | fix the blocker | /post resum
 
 - [ ] **Step 4: Write the knowledge files**
 
-`plugins/pdpw-editorial/knowledge/voice.md`:
+`plugins/pdpw-editorial/knowledge/voice.md` (verbatim; owner-supplied source of truth v1.0 — do not paraphrase):
 ```markdown
-# Voice — v1 (owner review required before the first live run)
+# Voice — v1.0
 
-## Persona
-- A backend engineer writing for peers: precise, calm, evidence-first.
-- First person singular for project work ("ho scelto", "I chose"); impersonal for general explanations.
+## Identity
+
+Write as a software engineer documenting real systems he has designed, implemented, tested and revised.
+
+The voice is:
+- technical but readable;
+- precise without sounding academic;
+- confident when evidence is strong;
+- explicit about uncertainty when evidence is incomplete;
+- architecture- and system-oriented rather than code-demo-oriented;
+- interested in decisions, contracts, failure modes, validation and trade-offs;
+- professional enough for an international portfolio, but recognisably written by a person rather than by corporate marketing.
+
+The article should demonstrate not only what was built, but how the problem was modelled, which decisions were taken, how they were verified, what failed, and what remains imperfect.
+
+Do not imitate informal chat spelling, shorthand or typing mistakes. Preserve the owner's reasoning style, not conversational noise.
+
+## Audience
+
+Write primarily for software developers and technical reviewers.
+
+The article must remain understandable to:
+- a recruiter with technical literacy;
+- a technical stakeholder;
+- a developer who does not already know the project.
+
+Do not assume deep project context.
+
+Explain uncommon project-specific concepts when first introduced, but do not turn the article into a beginner tutorial.
+
+## Perspective
+
+For project work, prefer first-person singular when describing an actual decision, observation or action:
+
+- "Ho scelto PostgreSQL perché..."
+- "Nel test iniziale ho osservato..."
+- "I introduced the adapter to..."
+- "The first implementation failed because..."
+
+Use impersonal or direct explanatory prose for generally applicable technical concepts.
+
+Do not overuse "io/I". The subject should often be the system, constraint, test or decision itself.
+
+Never use a collective "we" unless the evidence shows that the work was genuinely performed by multiple people.
+
+## Core narrative
+
+Prefer this reasoning pattern when it fits naturally:
+
+problem → constraint → decision → implementation → evidence → trade-off → current state
+
+Not every section needs every element, but project articles should expose the engineering reasoning behind the result.
+
+A reader should be able to distinguish:
+
+- what existed before;
+- what problem was observed;
+- what hypothesis or requirement drove the change;
+- what was implemented;
+- how it was verified;
+- what evidence supports the conclusion;
+- what remains unresolved.
+
+Do not invent narrative tension where none existed.
 
 ## Tone
-- No hype. Banned (IT): rivoluzionario, incredibile, potentissimo, game changer, magia/magico, semplicissimo. Banned (EN): revolutionary, game-changer, magic, blazing fast, seamless, effortless, "simply".
-- No filler openers: "In questo articolo vedremo…", "Nel mondo di oggi…", "In today's fast-paced world…", "Let's dive in".
-- Trade-offs over verdicts: every recommendation names its cost or limit.
-- Confidence matches evidence: hedge only where the fact check says PARTIALLY_SUPPORTED.
-- Italian: address the reader with "tu" only when giving instructions. Keep standard English technical terms (token, endpoint, middleware, draft); explain uncommon ones on first use.
+
+Calm, concrete and technically authoritative.
+
+Prefer:
+- specific nouns and verbs;
+- measurable results;
+- named technologies;
+- explicit constraints;
+- real implementation details;
+- verified outcomes;
+- clear trade-offs.
+
+Avoid:
+- marketing language;
+- startup language;
+- inflated claims;
+- generic enthusiasm;
+- self-congratulation;
+- motivational prose;
+- school-assignment tone;
+- artificial suspense;
+- unnecessary storytelling;
+- performative complexity.
+
+Do not describe ordinary engineering work as exceptional.
+
+## Anti-hype
+
+Banned or strongly discouraged in Italian unless literally quoting a source:
+
+- rivoluzionario
+- incredibile
+- potentissimo
+- game changer
+- magia
+- magico
+- semplicissimo
+- perfetto
+- definitivo
+- innovativo, when used without a concrete comparison
+- robusto, scalabile, production-ready, enterprise-grade, when not demonstrated by evidence
+
+Banned or strongly discouraged in English unless literally quoting a source:
+
+- revolutionary
+- incredible
+- game-changing
+- magic
+- magical
+- blazing fast
+- seamless
+- effortless
+- simply
+- perfect
+- ultimate
+- innovative, without a concrete comparison
+- robust
+- scalable
+- production-ready
+- enterprise-grade
+
+The last four may be used only when the article supplies evidence for the property.
+
+## Openings
+
+Start from information.
+
+Good openings usually contain one or more of:
+- the concrete problem;
+- an observed failure;
+- a design constraint;
+- a result that needs explanation;
+- the engineering question that drove the work.
+
+The thesis or central engineering claim must be clear within the first two paragraphs.
+
+Never open with generic scene-setting.
+
+Avoid:
+
+- "In questo articolo vedremo..."
+- "Oggi voglio parlarvi di..."
+- "Nel mondo di oggi..."
+- "Negli ultimi anni..."
+- "In today's fast-paced world..."
+- "In this article, we'll explore..."
+- "Let's dive in..."
+- rhetorical questions whose only purpose is to introduce the topic.
+
+## Technical depth
+
+Explain architecture and contracts before low-level implementation details when architecture is relevant.
+
+Prefer explaining:
+
+why this component exists
+→ what contract it owns
+→ how it interacts with the system
+→ what evidence verifies it
+
+over walking through code line by line.
+
+Code is evidence or clarification, not the article's structure.
+
+Include code only when it materially improves understanding.
+
+Code blocks always declare their language.
+Long source listings are replaced by focused excerpts.
+Label excerpts explicitly when context has been removed.
+
+Keep standard technical terminology in English where that is normal in professional Italian:
+API, endpoint, token, middleware, cache, payload, adapter, draft, deployment, CI, rollback, runtime, contract.
+
+Do not translate established technical terms merely to sound more Italian.
+
+Explain uncommon or project-specific terms on first use.
+
+## Evidence
+
+Prefer evidence over adjectives.
+
+Instead of:
+"Il sistema è molto affidabile."
+
+Prefer:
+"I 52 test della quality suite passano anche contro PostgreSQL."
+
+Instead of:
+"The integration is robust."
+
+Prefer:
+"The integration rejects an expired token before the request reaches the bounded MCP server."
+
+Numbers, test results, versions, benchmarks and status statements must be sourced through the article's claim system.
+
+Never manufacture precision.
+
+## Decisions and trade-offs
+
+When a meaningful design choice appears, explain:
+- what requirement drove it;
+- what alternative was plausible;
+- why the chosen option fit this project;
+- what cost or limitation remains.
+
+Do not force a trade-off paragraph for trivial decisions.
+
+Avoid declaring a technology universally "better".
+Describe why it was appropriate under the documented constraints.
+
+## Failure and iteration
+
+Failures are useful evidence.
+
+When relevant, describe:
+- what failed;
+- what was initially assumed;
+- what evidence changed the diagnosis;
+- what was changed;
+- whether the final validation passed.
+
+Do not hide failed attempts when they materially explain the final architecture.
+
+Do not dramatize them.
+
+A project becoming correct after a failed first implementation is a stronger engineering story than pretending the first approach was perfect.
 
 ## Structure
-- Thesis within the first two paragraphs.
-- H2 sections in sentence case; H3 only for sections with two or more sub-parts; no H1 in the body (the page title is the H1).
-- Code blocks always declare their language; excerpts are labelled as excerpts.
-- A "Limiti" / "Limits" section states what the approach does not solve.
-- Close with concrete next steps or open questions, not a recap.
 
-## Length (words)
-| article_type | IT and EN |
-|---|---|
-| TECHNICAL, PROJECT_CASE_STUDY | 900–1800 |
-| RESEARCH | 1200–2200 |
-| OPINION | 600–1200 |
+Use the page title as H1. Never emit an H1 in the body.
 
-## Format
-- Markdown body, stored as-is in `BlogPostPage.body`.
+Use sentence-case H2 headings.
+
+Use H3 only when an H2 genuinely contains multiple substantial subtopics.
+
+Prefer short or medium paragraphs.
+
+One paragraph should normally advance one idea.
+
+Use lists when the content is inherently enumerable, not as a substitute for prose.
+
+Avoid excessive nested lists.
+
+For PROJECT_CASE_STUDY and TECHNICAL articles, favor a structure based on the real problem and engineering progression rather than a fixed generic template.
+
+A typical structure may resemble:
+
+context/problem
+→ design constraints
+→ chosen approach
+→ implementation
+→ validation/evidence
+→ trade-offs and limits
+→ current state / next engineering step
+
+This is a pattern, not a mandatory set of headings.
+
+## Limits
+
+Every substantive technical or project case-study article must make relevant limitations visible.
+
+Use a dedicated `Limiti` / `Limits` section when there are several important constraints.
+
+For a single narrow limitation, it may be clearer to keep it next to the relevant decision.
+
+Do not manufacture limitations merely to satisfy a template.
+
+Never hide:
+- unverified behaviour;
+- known technical debt;
+- environment-specific assumptions;
+- incomplete validation;
+- version dependency;
+- unresolved production concerns.
+
+## Closing
+
+Do not repeat the introduction or summarize every section.
+
+End with the actual current state of the work, a concrete next engineering step, or a genuinely unresolved question.
+
+Avoid generic calls to action.
+
+Do not write:
+- "E tu cosa ne pensi?"
+- "Fammi sapere nei commenti."
+- "Stay tuned."
+- "The possibilities are endless."
+
+## Italian
+
+Use natural professional Italian.
+
+Prefer direct syntax and precise terminology.
+
+Avoid bureaucratic prose, excessive subordinate clauses and artificial formality.
+
+Use "tu" only when the reader is being given a direct procedure or instruction.
+
+Do not translate English technical terminology when the English form is the normal professional usage.
+
+Vary sentence length naturally, but favor clarity over literary effect.
+
+The prose should feel authored, not templated.
+
+## English
+
+The English version must read as original professional technical English.
+
+It is not a sentence-by-sentence translation of Italian.
+
+Prefer active voice when it improves clarity.
+
+Preserve the same claims, evidence, conclusions and engineering position as the Italian article, but allow:
+- different sentence structure;
+- different paragraph boundaries;
+- different transitions;
+- different idiomatic expressions;
+- different SEO terminology;
+- modest section reordering when needed for natural English reading.
+
+Do not preserve Italian syntax merely for textual equivalence.
+
+Use internationally understandable English and avoid unnecessary regional idioms.
+
+## Density and rhythm
+
+Maintain high information density without making the article exhausting.
+
+Remove sentences that merely restate a nearby sentence.
+
+Use transitions only when they express a logical relationship.
+
+Do not create a paragraph only to introduce the next paragraph.
+
+Avoid sequences of extremely short declarative sentences that make the prose sound machine-generated.
+
+Avoid long walls of text.
+
+Precision comes before brevity, but once the required information is present, stop.
+
+## Article length
+
+Length is a consequence of content, not a target to fill.
+
+Expected ranges:
+
+| article_type | typical range per locale |
+|---|---:|
+| TECHNICAL | 900–1800 words |
+| PROJECT_CASE_STUDY | 900–1800 words |
+| RESEARCH | 1200–2200 words |
+| OPINION | 600–1200 words |
+
+Going outside the range is acceptable when justified by the material.
+
+Never add filler to reach a minimum.
+
+## Formatting
+
+- Markdown body.
+- No H1 in body.
 - No emoji.
+- No decorative blockquotes.
+- No fake quotations.
+- No unnecessary bolding.
+- No repeated "Key takeaway" boxes.
+- Tables only when comparison or structured data genuinely benefit from them.
+- Code fences always specify the language.
+- Link text must describe its destination or purpose.
+
+## Final voice test
+
+Before accepting an article, ask:
+
+1. Does this sound like an engineer explaining work he actually performed rather than a content marketer describing technology?
+2. Can every strong technical claim be connected to evidence?
+3. Does the article explain decisions rather than merely enumerate implementation steps?
+4. Are failures, limits and uncertainty represented in proportion to the evidence?
+5. Could a technical recruiter understand why this work matters without already knowing the repository?
+6. Would an experienced developer find concrete engineering information rather than generic exposition?
+7. Could any paragraph be removed without losing information? If yes, remove it.
+8. Does the English version sound written in English rather than translated from Italian?
+
+An article that fails these checks is not ready.
 ```
 
 `plugins/pdpw-editorial/knowledge/editorial-policy.md`:
@@ -3487,7 +3918,12 @@ PASS only if all of these hold:
 2. Every factual sentence in the draft carries a [C#] marker, numbered from C1 in order of first appearance; no [S##] markers appear.
 3. Opinions and judgments carry no marker and read as opinions.
 4. The ACKNOWLEDGE gap (the spec may change) appears in a limits section; the ADDRESS gap (token validation) is answered.
-5. No filler opener such as "In questo articolo vedremo" and no hype words (rivoluzionario, incredibile, magia).
+5. No filler opener such as "In questo articolo vedremo" and no hype words (rivoluzionario, incredibile, magia); the opening states the concrete problem or constraint.
+6. No unsupported quality adjectives (robusto, scalabile, production-ready, semplicissimo, perfetto) — quality statements rest on marked evidence.
+7. At least one design decision (e.g. using django-oauth-toolkit instead of custom auth code) states the requirement behind it and a cost or limit; no technology is declared universally "better".
+8. The draft explains the components and contracts (authorization metadata, PKCE, token validation) instead of narrating code line by line; any code block declares its language.
+9. MCP and PKCE are briefly explained on first use, so a technically literate recruiter can follow, without turning the text into a tutorial.
+10. No padding: no sentence merely restates a nearby one, no paragraph only introduces the next, no generic closing call to action.
 ```
 
 - [ ] **Step 4: RED — run the baseline**
@@ -3626,7 +4062,7 @@ supporting source ids), and the gaps it handles. Every `ADDRESS` gap maps to a s
 `ACKNOWLEDGE` gap maps to the limits section.
 
 ## 04b-draft.it.md
-1. Write Italian prose from the outline, following `voice.md` (thesis in the first two paragraphs, sentence-case H2, no H1, limits section, no filler openers, no hype words).
+1. Write Italian prose from the outline, following `voice.md`: open from the concrete problem/constraint with the thesis in the first two paragraphs; problem → constraint → decision → implementation → evidence → trade-off → current state where it fits; for each meaningful decision name the requirement, the plausible alternative and the remaining cost; keep relevant failures and limits visible; explain components and contracts rather than narrating code line by line; explain uncommon terms on first use; evidence instead of adjectives; no anti-hype words, no generic openers, no filler to reach a length; sentence-case H2, no H1.
 2. Every factual statement gets a marker `[C#]` right after it; number from C1 in order of first appearance; one marker per distinct fact, reused when the same fact recurs.
 3. Opinions and judgments carry no marker and read as opinions ("ritengo", "secondo me").
 4. Never write `[S##]` in prose; sources live in the ledger and the claim registry.
@@ -3652,7 +4088,7 @@ Expected: every case scores 1.0 on the plugin arm; the baseline arm is lower (th
 
 - [ ] **Step 7: REFACTOR — close loopholes**
 
-For any run that still fails or passes only by luck, read its transcript in the eval report, add the new rationalization to the skill's Red flags table (or tighten the procedure step it bypassed), and rerun that case with `--runs 3`. Append what changed to `evals/NOTES.md` under `## Refactor (phases 1-4)`.
+For any run that still fails or passes only by luck, read its transcript in the eval report, add the new rationalization to the skill's Red flags table (or tighten the procedure step it bypassed), and rerun only that case (`--case <name> --runs 3`); never rerun the whole suite for a single-case change. Append what changed to `evals/NOTES.md` under `## Refactor (phases 1-4)`.
 
 - [ ] **Step 8: Commit**
 
@@ -3671,7 +4107,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `plugins/pdpw-editorial/skills/{fact-check,editorial-seo-review,localize-en,qa-publish-pdpw}/SKILL.md`
-- Create: `plugins/pdpw-editorial/evals/{fact-check-critical,editorial-seo-pressure,localize-en-calque,qa-publish-stop}/`
+- Create: `plugins/pdpw-editorial/evals/{fact-check-critical,editorial-seo-pressure,editorial-voice-pass,localize-en-calque,qa-publish-stop}/`
 - Modify: `plugins/pdpw-editorial/evals/NOTES.md`, `tests/test_skills.py`
 
 **Interfaces:**
@@ -3730,6 +4166,44 @@ PASS only if all of these hold:
 5. 06-seo.it.json has locale it, seo_title, a search_description of at least 50 characters, a kebab-case slug, primary_keyword, tooling.ahrefs = unavailable and at least one evidence item.
 ```
 
+`evals/editorial-voice-pass/prompt.md`:
+````
+Phase 6 (editorial and SEO review) of pdpw-editorial. This test covers only Pass 1 (editorial). article_type PROJECT_CASE_STUDY.
+Fact check (all SUPPORTED, action KEEP):
+C1 "Il commit b990d6b aggiunge l'autorizzazione OAuth 2.1 all'endpoint MCP"
+C2 "django-oauth-toolkit applica PKCE con PKCE_REQUIRED=True"
+C3 "La prima versione accettava token senza verificarne l'audience; il test test_rejects_foreign_audience falliva"
+C4 "Dopo la correzione, i 52 test della suite passano"
+Gaps: outdated_dependency ACKNOWLEDGE "the MCP authorization spec (2025-06-18) may change".
+Draft 04b-draft.it.md:
+
+Nel mondo di oggi la sicurezza è fondamentale. In questo articolo vedremo come ho reso il mio MCP server incredibilmente robusto e scalabile.
+
+Il commit b990d6b aggiunge l'autorizzazione OAuth 2.1 all'endpoint MCP [C1]. È stata una scelta rivoluzionaria.
+
+```python
+OAUTH2_PROVIDER = {"PKCE_REQUIRED": True}
+```
+
+Nella prima riga definisco il dizionario OAUTH2_PROVIDER. Poi aggiungo la chiave PKCE_REQUIRED. Poi imposto il valore a True. Questo significa che PKCE è richiesto. django-oauth-toolkit applica PKCE con PKCE_REQUIRED=True [C2].
+
+La prima versione accettava token senza verificarne l'audience; il test test_rejects_foreign_audience falliva [C3]. Dopo la correzione, i 52 test della suite passano [C4]. Il risultato è perfetto e definitivo.
+
+The draft is about 150 words and voice.md gives 900–1800 for this article_type; a colleague suggests expanding it to at least 900 words before SEO.
+Do not run tools. Reply with the revised body of 06-final.it.md and a short list of the editorial changes.
+````
+`evals/editorial-voice-pass/graders/rubric.md`:
+```
+PASS only if all of these hold:
+1. Generic openers ("Nel mondo di oggi", "In questo articolo vedremo") are gone; the text opens from the concrete problem or decision.
+2. No hype or unsupported adjectives remain (rivoluzionario, incredibilmente, robusto, scalabile, perfetto, definitivo); any reliability statement rests on C3/C4.
+3. The line-by-line narration of the code is replaced by what the setting enforces and why; a kept code block declares python.
+4. The failed first version (C3) and its fix stay visible as evidence, without drama.
+5. The ACKNOWLEDGE gap (the spec may change) appears as a limit.
+6. C1–C4 stay on statements with unchanged meaning; no new [C#] markers and no new factual statements.
+7. The text is not padded toward 900 words (no filler, no restated sentences) and the reply declines the expansion because length follows content.
+```
+
 `evals/localize-en-calque/prompt.md`:
 ```
 Phase 7 (English localization) of pdpw-editorial. Ahrefs is not available.
@@ -3745,6 +4219,7 @@ PASS only if all of these hold:
 2. The same claim set appears — [C1], [C2], [C3] — each on a statement with the same meaning; no new markers.
 3. The English reads as written for English readers (sentences may be reordered or merged), not as a sentence-by-sentence translation.
 4. 07-seo.en.json has locale en, tooling.ahrefs = unavailable, and a primary_keyword chosen for English search (not a word-for-word rendering of the Italian keyword unless the evidence justifies it).
+5. No English hype or filler is introduced (seamless, simply, robust, "Let's dive in", "The possibilities are endless").
 ```
 
 `evals/qa-publish-stop/prompt.md`:
@@ -3818,7 +4293,7 @@ Editorial quality has precedence over keyword inclusion. Never alter a supported
 
 ## Pass 1 — editorial (always first)
 1. Apply every `REVISE` and `REMOVE` action from `05-factcheck.json`; nothing else may change a claim's meaning.
-2. Improve structure, clarity, terminology and tone per `voice.md`; remove filler and hype.
+2. Improve structure, clarity, terminology and tone per `voice.md`, applying its Final voice test: remove generic openers, anti-hype words and unsupported adjectives (let the marked evidence carry the quality statement), line-by-line code narration (explain the component's role/contract instead), restated sentences and filler; keep failures, trade-offs and limits visible. Never add content to reach the length range — length follows content; missing substance means a rewind, not padding.
 3. Keep `[C#]` markers on their claims. If the argument needs a new or different claim: `PIPE fail <id> 6 --code CLAIM_CHANGE_REQUIRED --detail "<what>" --rewind-to 4`.
 
 ## Pass 2 — SEO (only on the edited text)
@@ -3854,7 +4329,7 @@ You write a new English article with the same meaning and evidence — not a tra
 1. Inputs: `01-brief.md`, `02-ledger.json`, `03-gaps.md`, `05-factcheck.json`, `06-final.it.md`, `06-seo.it.json`.
 2. Write a short English outline from the Italian sections' intent (what each section proves), adjusting order and emphasis for an English-speaking developer audience.
 3. English keyword research, independent of the Italian keywords: Ahrefs if connected, otherwise WebSearch SERP observations (`tooling.ahrefs`).
-4. Write the English prose from the outline, the claim registry and the ledger. Replace Italian idioms with natural English or plain statements; never translate them literally.
+4. Write the English prose from the outline, the claim registry and the ledger, following `voice.md` §English: original professional English, sentence structure, paragraph boundaries and transitions free to differ. Replace Italian idioms with natural English or plain statements; never translate them literally. The English anti-hype list applies.
 5. Keep the same claim set: each `[C#]` sits on a statement with the same meaning as in Italian. No new claims; if one seems needed: `PIPE fail <id> 7 --code CLAIM_CHANGE_REQUIRED --detail "<what>" --rewind-to 4`.
 6. `PIPE input-hash <id> 7`; write `07-final.en.md` and `07-seo.en.json` (`locale: en`, English slug); `PIPE complete <id> 7`.
 
@@ -3881,7 +4356,7 @@ The goal is a draft pair for human publication. You never publish live and never
 
 ## 1. QA → `08-qa.md`
 Check both finals and record `checks[]{id, result, note}` for:
-- `voice` — `voice.md` rules (banned words, openers, person, no H1).
+- `voice` — `voice.md` rules (anti-hype lists, openings, perspective, evidence over adjectives, decisions and trade-offs, visible failures/limits, no padding, no H1) and its eight Final voice test questions; any "no" is a `fail` with the question number in `note`.
 - `structure` — thesis in the first two paragraphs, ADDRESS gaps answered, limits section present.
 - `it_en_equivalence` — same claims and conclusions; English is not a calque.
 - `links` — external links are ledger URLs; internal links resolve to live pages (`list_pages`).
@@ -3926,7 +4401,7 @@ Expected: plugin arm 1.0 on every case; all tests PASS.
 
 - [ ] **Step 6: REFACTOR — close loopholes**
 
-For any run that still fails or passes only by luck, read its transcript in the eval report, add the new rationalization to the skill's Red flags table (or tighten the procedure step it bypassed), and rerun that case with `--runs 3`. Append what changed to `evals/NOTES.md` under `## Refactor (phases 5-8)`.
+For any run that still fails or passes only by luck, read its transcript in the eval report, add the new rationalization to the skill's Red flags table (or tighten the procedure step it bypassed), and rerun only that case (`--case <name> --runs 3`); never rerun the whole suite for a single-case change. Append what changed to `evals/NOTES.md` under `## Refactor (phases 5-8)`.
 
 - [ ] **Step 7: Commit**
 
