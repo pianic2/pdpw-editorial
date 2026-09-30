@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="24" x2="882" y2="288" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101D2C"/>
+      <stop offset="1" stop-color="#172A3B"/>
+    </linearGradient>
+    <linearGradient id="line" x1="534" y1="83" x2="870" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#62D7C5"/>
+      <stop offset="1" stop-color="#80AFFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="846" cy="63" r="92" fill="#62D7C5" fill-opacity=".07"/>
+  <circle cx="914" cy="238" r="112" fill="#80AFFF" fill-opacity=".07"/>
+  <path d="M525 150H584M652 150H710M778 150H830" stroke="url(#line)" stroke-width="3" stroke-linecap="round"/>
+  <path d="m700 144 10 6-10 6M820 144l10 6-10 6" stroke="url(#line)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="553" y="124" width="99" height="52" rx="14" fill="#20384A" stroke="#62D7C5" stroke-opacity=".75"/>
+  <rect x="676" y="124" width="102" height="52" rx="14" fill="#20384A" stroke="#80AFFF" stroke-opacity=".75"/>
+  <rect x="802" y="124" width="105" height="52" rx="14" fill="#20384A" stroke="#62D7C5" stroke-opacity=".75"/>
+  <text x="602.5" y="155" text-anchor="middle" fill="#D9F6F0" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14" letter-spacing="1">RESEARCH</text>
+  <text x="727" y="155" text-anchor="middle" fill="#E0EAFF" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14" letter-spacing="1">REVIEW</text>
+  <text x="854.5" y="155" text-anchor="middle" fill="#D9F6F0" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="14" letter-spacing="1">IT + EN</text>
+  <rect x="517" y="139" width="16" height="22" rx="5" fill="#62D7C5"/>
+  <path d="M48 52h38" stroke="#62D7C5" stroke-width="4" stroke-linecap="round"/>
+  <text x="48" y="126" fill="#F4F7FA" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="48" font-weight="700" letter-spacing="-1.8">pdpw-editorial</text>
+  <text x="51" y="166" fill="#B7C7D5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="19">A resumable pipeline for evidence-backed portfolio drafts.</text>
+  <text x="51" y="240" fill="#76DCCB" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="13" letter-spacing="1.2">BRIEF  /  SOURCES  /  FACT CHECK  /  LOCALIZE</text>
+</svg>
