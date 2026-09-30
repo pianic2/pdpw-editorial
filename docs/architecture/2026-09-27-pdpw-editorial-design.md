@@ -304,7 +304,7 @@ La pipeline si ferma (`BLOCKED`) solo per:
 pdpw-editorial/
 ├── .claude-plugin/marketplace.json
 ├── pyproject.toml                       # uv; deps: jsonschema, pyyaml; dev: pytest, ruff
-├── docs/specs/
+├── docs/architecture/
 ├── plugins/pdpw-editorial/
 │   ├── .claude-plugin/plugin.json
 │   ├── CONTRACT.md                      # contratto operativo, fonte di verità per l'agente

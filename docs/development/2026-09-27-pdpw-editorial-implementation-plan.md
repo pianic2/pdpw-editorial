@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13 via `uv`, `jsonschema` (Draft 2020-12), `pyyaml`, `pytest`, `ruff`; Claude Code plugin format (skills, agents, commands, marketplace); `claude plugin eval` for skill RED/GREEN testing; PDPW MCP (Wagtail).
 
-**Spec:** `docs/specs/2026-09-27-pdpw-editorial-design.md`
+**Spec:** `docs/architecture/2026-09-27-pdpw-editorial-design.md`
 
 ## Global Constraints
 
@@ -3021,7 +3021,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Files:**
 - Create: `plugins/pdpw-editorial/CONTRACT.md`
 - Create: `plugins/pdpw-editorial/knowledge/voice.md`, `editorial-policy.md`, `source-policy.md`
-- Modify: `docs/specs/2026-09-27-pdpw-editorial-design.md` (append Addendum A)
+- Modify: `docs/architecture/2026-09-27-pdpw-editorial-design.md` (append Addendum A)
 - Test: `tests/test_contract.py`
 
 **Interfaces:**
@@ -3752,7 +3752,7 @@ An article that fails these checks is not ready.
 
 - [ ] **Step 5: Append Addendum A to the spec**
 
-Append to `docs/specs/2026-09-27-pdpw-editorial-design.md`:
+Append to `docs/architecture/2026-09-27-pdpw-editorial-design.md`:
 ```markdown
 
 ## Addendum A — refinements fixed by the implementation plan (2026-09-27)
@@ -3775,7 +3775,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add plugins/pdpw-editorial/CONTRACT.md plugins/pdpw-editorial/knowledge docs/specs/2026-09-27-pdpw-editorial-design.md tests/test_contract.py
+git add plugins/pdpw-editorial/CONTRACT.md plugins/pdpw-editorial/knowledge docs/architecture/2026-09-27-pdpw-editorial-design.md tests/test_contract.py
 git commit -m "docs: add operating contract, knowledge base and spec addendum
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -4581,7 +4581,7 @@ verbatim. Otherwise follow `plugins/pdpw-editorial/CONTRACT.md` §3 and §4 for 
 Claude Code plugin that turns a topic into a bilingual (IT+EN) portfolio article and leaves it as
 a Wagtail draft pair through the PDPW MCP. Publication is always manual in Wagtail admin.
 
-- Design: `docs/specs/2026-09-27-pdpw-editorial-design.md`
+- Design: `docs/architecture/2026-09-27-pdpw-editorial-design.md`
 - Operating contract: `plugins/pdpw-editorial/CONTRACT.md`
 - Articles: `posts/<stable_id>/`
 
